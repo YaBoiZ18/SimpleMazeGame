@@ -131,4 +131,9 @@ public class PlayerController : MonoBehaviour
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
         }
     }
+
+    public float StaminaNormalized
+    {
+        get { return currentStamina / maxStamina; } // Return stamina as a normalized value (0..1) for UI or other systems.
+    }
 }
