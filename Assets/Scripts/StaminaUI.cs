@@ -3,15 +3,30 @@ using UnityEngine.UI;
 
 public class StaminaUI : MonoBehaviour
 {
-   [SerializeField] private PlayerController player; // Reference to the PlayerController to access stamina values.
-   [SerializeField] private Image staminaFill; // UI Image component representing the fill of the stamina bar.
+    // Assign this in the Inspector: Image whose fillAmount represents stamina (0..1).
+    [SerializeField] private Image staminaFill;
 
-    // Update is called once per frame
-    void Update()
+    // Runtime reference to the player whose stamina we display.
+    private PlayerController player;
+
+    // Called by external code to bind a PlayerController to this UI.
+    public void SetPlayer(PlayerController newPlayer)
     {
-        if (player != null)
+        player = newPlayer;
+    }
+
+    // Update is called once per frame by Unity.
+    // We update the UI image fill to match the player's normalized stamina.
+    private void Update()
+    {
+        // Safety checks to avoid null reference exceptions in edit/play mode.
+        if (player == null || staminaFill == null)
         {
-            staminaFill.fillAmount = player.StaminaNormalized; // Update the fill amount based on the player's current stamina (0 to 1).
+            return;
         }
+
+        // Pull the normalized stamina value (expected in range [0,1])
+        // and apply it to the UI image's fill amount.
+        staminaFill.fillAmount = player.StaminaNormalized;
     }
 }

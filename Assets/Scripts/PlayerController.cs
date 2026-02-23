@@ -19,10 +19,8 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody rb; // Cached Rigidbody reference for physics-based movement.
     private bool isSprinting; // Whether the player is currently sprinting.
+    private bool sprintLocked;
 
-    /// <summary>
-    /// Called on the first frame. Cache components and initialize state.
-    /// </summary>
     private void Start()
     {
         // Cache the Rigidbody component for use in FixedUpdate movement.
@@ -35,9 +33,6 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
     }
 
-    /// <summary>
-    /// Called every frame. Handle input and non-physics updates (mouse look, sprint/stamina).
-    /// </summary>
     private void Update()
     {
         HandleMouseLook();     // Rotate camera and player based on mouse input.
@@ -45,9 +40,6 @@ public class PlayerController : MonoBehaviour
         RegenerateStamina();  // Regenerate stamina when not sprinting.
     }
 
-    /// <summary>
-    /// Called at a fixed timestep. Perform physics-based movement here.
-    /// </summary>
     private void FixedUpdate()
     {
         HandleMovement(); // Move the Rigidbody according to input and current speed.
@@ -103,20 +95,30 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandleSprint()
     {
-        // If LeftShift is held and there is stamina left, sprint and drain stamina.
+        // If sprint is locked, do not allow sprinting
+        if (sprintLocked)
+        {
+            isSprinting = false;
+            return;
+        }
+
         if (Input.GetKey(KeyCode.LeftShift) && currentStamina > 0f)
         {
             isSprinting = true;
             currentStamina -= staminaDrainRate * Time.deltaTime;
+
+            // If stamina reaches zero, lock sprint
+            if (currentStamina <= 0f)
+            {
+                currentStamina = 0f;
+                sprintLocked = true;
+                isSprinting = false;
+            }
         }
         else
         {
-            // Not sprinting when key not held or out of stamina.
             isSprinting = false;
         }
-
-        // Ensure stamina stays within [0, maxStamina].
-        currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
     }
 
     /// <summary>
@@ -127,8 +129,13 @@ public class PlayerController : MonoBehaviour
         if (!isSprinting && currentStamina < maxStamina)
         {
             currentStamina += staminaRegenRate * Time.deltaTime;
-            // Clamp to avoid tiny overshoot from floating point addition.
             currentStamina = Mathf.Clamp(currentStamina, 0f, maxStamina);
+
+            // Unlock sprint ONLY when stamina is fully restored
+            if (currentStamina >= maxStamina)
+            {
+                sprintLocked = false;
+            }
         }
     }
 
