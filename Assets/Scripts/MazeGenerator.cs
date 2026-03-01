@@ -15,25 +15,30 @@ public class Cell
 
 public class MazeGenerator : MonoBehaviour
 {
-    [Header("Maze Settings")]   
-    public int width = 7; // Number of cells horizontally
+    [Header("Maze Settings")]  
+    public int width = 7; // Number of cells horizontally 
     public int height = 7; // Number of cells vertically
     public float cellSize = 4f; // World size of each cell (distance between cell centers)
 
-    [Header("Wall Prefab")]   
+    [Header("Wall Prefab")]  
     public GameObject wallPrefab; // Prefab used to create walls (should be a simple cube or plane)
 
     [Header("Player")]
-    public GameObject playerPrefab; // Drag your Player prefab here
+    public GameObject playerPrefab; // Drag your Player prefab here    
     public float playerSpawnHeight = 1f; // Prevent spawning inside floor
 
-    private Cell[,] grid; // Internal grid of cells
+    [Header("Exit")]    
+    public GameObject exitPrefab; // Prefab for the exit/goal object    
+    public float exitSpawnHeight = 0.5f; // Height to place the exit above the ground
     
+    private int playerSpawnSide; // Tracks which side the player was spawned on (0..3)
+    
+    private Cell[,] grid; // Internal grid of cells
+  
     private Stack<Vector2Int> stack = new Stack<Vector2Int>(); // Stack used for iterative DFS
     
     private System.Random rng = new System.Random(); // Random number generator for neighbor selection
 
-    // Start is called before the first frame update
     void Start()
     {
         GenerateGrid();
@@ -166,46 +171,64 @@ public class MazeGenerator : MonoBehaviour
         }
     }
 
+    // Choose a random cell along one edge to spawn the player
     void SpawnPlayerAtEdge()
     {
-        // Pick a random side: 0 = left, 1 = right, 2 = bottom, 3 = top
-        int side = rng.Next(4);
-
+        // Randomly pick one of the four sides (0 = left, 1 = right, 2 = bottom, 3 = top)
+        playerSpawnSide = rng.Next(4);
         Vector2Int spawnCell = Vector2Int.zero;
 
-        switch (side)
+        switch (playerSpawnSide)
         {
-            case 0: // Left edge
-                spawnCell = new Vector2Int(0, rng.Next(height));
-                break;
-
-            case 1: // Right edge
-                spawnCell = new Vector2Int(width - 1, rng.Next(height));
-                break;
-
-            case 2: // Bottom edge
-                spawnCell = new Vector2Int(rng.Next(width), 0);
-                break;
-
-            case 3: // Top edge
-                spawnCell = new Vector2Int(rng.Next(width), height - 1);
-                break;
+            case 0: spawnCell = new Vector2Int(0, rng.Next(height)); break;
+            case 1: spawnCell = new Vector2Int(width - 1, rng.Next(height)); break;
+            case 2: spawnCell = new Vector2Int(rng.Next(width), 0); break;
+            case 3: spawnCell = new Vector2Int(rng.Next(width), height - 1); break;
         }
 
-        // Convert cell position to world position (center of cell)
+        // Compute world-space position at the center of the chosen cell
         Vector3 worldPosition = new Vector3(
             spawnCell.x * cellSize,
             playerSpawnHeight,
             spawnCell.y * cellSize
         );
 
+        // Instantiate the player prefab at the calculated position
         GameObject spawnedPlayer = Instantiate(playerPrefab, worldPosition, Quaternion.identity);
 
-        // Tell the UI which player to follow
+        // If there's a UI that needs the player reference, set it
         StaminaUI ui = FindObjectOfType<StaminaUI>();
         if (ui != null)
-        {
             ui.SetPlayer(spawnedPlayer.GetComponent<PlayerController>());
+
+        // Spawn the exit opposite the player's side
+        SpawnExit();
+    }
+
+    // Place the exit on the opposite edge from the player's spawn side
+    void SpawnExit()
+    {
+        // Opposite side logic (0..3) -> add 2 modulo 4
+        int exitSide = (playerSpawnSide + 2) % 4;
+
+        Vector2Int exitCell = Vector2Int.zero;
+
+        switch (exitSide)
+        {
+            case 0: exitCell = new Vector2Int(0, rng.Next(height)); break;
+            case 1: exitCell = new Vector2Int(width - 1, rng.Next(height)); break;
+            case 2: exitCell = new Vector2Int(rng.Next(width), 0); break;
+            case 3: exitCell = new Vector2Int(rng.Next(width), height - 1); break;
         }
-    } 
+
+        // Compute world-space position for the exit
+        Vector3 worldPosition = new Vector3(
+            exitCell.x * cellSize,
+            exitSpawnHeight,
+            exitCell.y * cellSize
+        );
+
+        // Instantiate the exit prefab at the calculated position
+        Instantiate(exitPrefab, worldPosition, Quaternion.identity);
+    }
 }
