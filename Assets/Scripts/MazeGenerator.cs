@@ -30,7 +30,13 @@ public class MazeGenerator : MonoBehaviour
     [Header("Exit")]    
     public GameObject exitPrefab; // Prefab for the exit/goal object    
     public float exitSpawnHeight = 0.5f; // Height to place the exit above the ground
-    
+
+    [Header("Key")]
+    public GameObject keyPrefab;
+    public float keySpawnHeight = 0.5f;
+
+    private MazeExit mazeExit;
+
     private int playerSpawnSide; // Tracks which side the player was spawned on (0..3)
     
     private Cell[,] grid; // Internal grid of cells
@@ -38,6 +44,9 @@ public class MazeGenerator : MonoBehaviour
     private Stack<Vector2Int> stack = new Stack<Vector2Int>(); // Stack used for iterative DFS
     
     private System.Random rng = new System.Random(); // Random number generator for neighbor selection
+
+    private Vector2Int exitCellPosition;
+    private Vector2Int playerSpawnCell;
 
     void Start()
     {
@@ -186,6 +195,8 @@ public class MazeGenerator : MonoBehaviour
             case 3: spawnCell = new Vector2Int(rng.Next(width), height - 1); break;
         }
 
+        playerSpawnCell = spawnCell;
+
         // Compute world-space position at the center of the chosen cell
         Vector3 worldPosition = new Vector3(
             spawnCell.x * cellSize,
@@ -203,32 +214,98 @@ public class MazeGenerator : MonoBehaviour
 
         // Spawn the exit opposite the player's side
         SpawnExit();
+        SpawnKey();
     }
 
     // Place the exit on the opposite edge from the player's spawn side
     void SpawnExit()
     {
-        // Opposite side logic (0..3) -> add 2 modulo 4
+        // Determine which side of the maze the exit should appear on
         int exitSide = (playerSpawnSide + 2) % 4;
 
         Vector2Int exitCell = Vector2Int.zero;
 
+        // Pick a random cell along the chosen edge
         switch (exitSide)
         {
-            case 0: exitCell = new Vector2Int(0, rng.Next(height)); break;
-            case 1: exitCell = new Vector2Int(width - 1, rng.Next(height)); break;
-            case 2: exitCell = new Vector2Int(rng.Next(width), 0); break;
-            case 3: exitCell = new Vector2Int(rng.Next(width), height - 1); break;
+            case 0: exitCell = new Vector2Int(0, rng.Next(height)); break;              // Left edge
+            case 1: exitCell = new Vector2Int(width - 1, rng.Next(height)); break;      // Right edge
+            case 2: exitCell = new Vector2Int(rng.Next(width), 0); break;               // Bottom edge
+            case 3: exitCell = new Vector2Int(rng.Next(width), height - 1); break;      // Top edge
         }
 
-        // Compute world-space position for the exit
+        // Store the chosen exit cell
+        exitCellPosition = exitCell;
+
+        // Convert grid coordinates to world-space position
         Vector3 worldPosition = new Vector3(
             exitCell.x * cellSize,
             exitSpawnHeight,
             exitCell.y * cellSize
         );
 
-        // Instantiate the exit prefab at the calculated position
-        Instantiate(exitPrefab, worldPosition, Quaternion.identity);
+        // Spawn the exit object in the world
+        GameObject exitObj = Instantiate(exitPrefab, worldPosition, Quaternion.identity);
+
+        // Cache the MazeExit component for later use
+        mazeExit = exitObj.GetComponent<MazeExit>();
+    }
+
+    void SpawnKey()
+    {
+        // Define all four corners
+        List<Vector2Int> corners = new List<Vector2Int>()
+    {
+        new Vector2Int(0, 0),
+        new Vector2Int(0, height - 1),
+        new Vector2Int(width - 1, 0),
+        new Vector2Int(width - 1, height - 1)
+    };
+
+        // Remove the corner closest to the player spawn
+        corners.RemoveAll(c => c == GetClosestCorner(playerSpawnCell));
+
+        // Remove the corner closest to the exit (avoid easy key near exit)
+        corners.RemoveAll(c => c == GetClosestCorner(exitCellPosition));
+
+        // Randomly pick from remaining valid corners
+        Vector2Int keyCell = corners[rng.Next(corners.Count)];
+
+        Vector3 worldPosition = new Vector3(
+            keyCell.x * cellSize,
+            keySpawnHeight,
+            keyCell.y * cellSize
+        );
+
+        GameObject keyObj = Instantiate(keyPrefab, worldPosition, Quaternion.identity);
+
+        MazeKey keyScript = keyObj.GetComponent<MazeKey>();
+        keyScript.Initialize(mazeExit);
+    }
+
+    Vector2Int GetClosestCorner(Vector2Int position)
+    {
+        List<Vector2Int> corners = new List<Vector2Int>()
+    {
+        new Vector2Int(0, 0),
+        new Vector2Int(0, height - 1),
+        new Vector2Int(width - 1, 0),
+        new Vector2Int(width - 1, height - 1)
+    };
+
+        Vector2Int closest = corners[0];
+        float minDistance = Vector2Int.Distance(position, closest);
+
+        foreach (var corner in corners)
+        {
+            float distance = Vector2Int.Distance(position, corner);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closest = corner;
+            }
+        }
+
+        return closest;
     }
 }

@@ -1265,6 +1265,8 @@ MonoBehaviour:
   playerSpawnHeight: 1
   exitPrefab: {fileID: 7826141598360597931, guid: f8c0a4fa42f2d3c42bc2e61605ba4790, type: 3}
   exitSpawnHeight: 0.5
+  keyPrefab: {fileID: 3635136869218046817, guid: 26aba0af95c13f841989943a49c9641b, type: 3}
+  keySpawnHeight: 0.5
 --- !u!4 &1917049425
 Transform:
   m_ObjectHideFlags: 0
