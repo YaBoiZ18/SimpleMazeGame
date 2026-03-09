@@ -53,6 +53,7 @@ public class MazeGenerator : MonoBehaviour
         GenerateGrid();
         GenerateMaze(new Vector2Int(0, 0));
         SpawnPlayerAtEdge();
+        ObjectiveUI.Instance.SetObjective("Find the key hidden in the maze");
     }
 
     // Create grid and instantiate walls for each cell

@@ -17,6 +17,7 @@ public class MazeKey : MonoBehaviour
                 exit.UnlockExit();
 
             Destroy(gameObject); // Remove key
+            ObjectiveUI.Instance.SetObjective("The exit is unlocked! Escape the maze!");
         }
     }
 }
