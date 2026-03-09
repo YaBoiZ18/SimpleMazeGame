@@ -1906,6 +1906,10 @@ MonoBehaviour:
   exitSpawnHeight: 0.5
   keyPrefab: {fileID: 3635136869218046817, guid: 26aba0af95c13f841989943a49c9641b, type: 3}
   keySpawnHeight: 0.5
+  topLeftColor: {r: 0.6, g: 0.8, b: 1, a: 1}
+  topRightColor: {r: 1, g: 0.7, b: 0.7, a: 1}
+  bottomLeftColor: {r: 0.7, g: 1, b: 0.7, a: 1}
+  bottomRightColor: {r: 1, g: 0.9, b: 0.6, a: 1}
 --- !u!4 &1917049425
 Transform:
   m_ObjectHideFlags: 0

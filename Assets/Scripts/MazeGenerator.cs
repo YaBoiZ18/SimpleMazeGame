@@ -32,10 +32,16 @@ public class MazeGenerator : MonoBehaviour
     public float exitSpawnHeight = 0.5f; // Height to place the exit above the ground
 
     [Header("Key")]
-    public GameObject keyPrefab;
-    public float keySpawnHeight = 0.5f;
+    public GameObject keyPrefab; // Prefab for the key object that unlocks the exit
+    public float keySpawnHeight = 0.5f; // Height to place the key above the ground
 
-    private MazeExit mazeExit;
+    [Header("Maze Colors")]
+    public Color topLeftColor = new Color(0.6f, 0.8f, 1f); // Light blue
+    public Color topRightColor = new Color(1f, 0.7f, 0.7f); // Light pink
+    public Color bottomLeftColor = new Color(0.7f, 1f, 0.7f); // Light green
+    public Color bottomRightColor = new Color(1f, 0.9f, 0.6f); // Light orange
+
+    private MazeExit mazeExit; // Cached reference to the MazeExit component for unlocking logic
 
     private int playerSpawnSide; // Tracks which side the player was spawned on (0..3)
     
@@ -45,8 +51,8 @@ public class MazeGenerator : MonoBehaviour
     
     private System.Random rng = new System.Random(); // Random number generator for neighbor selection
 
-    private Vector2Int exitCellPosition;
-    private Vector2Int playerSpawnCell;
+    private Vector2Int exitCellPosition; // Stores the grid coordinates of the exit for key placement logic
+    private Vector2Int playerSpawnCell; // Stores the grid coordinates of the player's spawn cell for key placement logic
 
     void Start()
     {
@@ -67,6 +73,8 @@ public class MazeGenerator : MonoBehaviour
             {
                 Vector3 position = new Vector3(x * cellSize, 0, y * cellSize);
                 Cell cell = new Cell();
+
+                Color wallColor = GetCellColor(x, y);
 
                 // Instantiate top wall at +Z edge of cell
                 cell.topWall = Instantiate(wallPrefab,
@@ -95,6 +103,11 @@ public class MazeGenerator : MonoBehaviour
                     Quaternion.Euler(0, 90, 0),
                     transform);
                 cell.rightWall.transform.localScale = new Vector3(cellSize, 2f, 0.3f);
+
+                cell.topWall.GetComponent<Renderer>().material.color = wallColor;
+                cell.bottomWall.GetComponent<Renderer>().material.color = wallColor;
+                cell.leftWall.GetComponent<Renderer>().material.color = wallColor;
+                cell.rightWall.GetComponent<Renderer>().material.color = wallColor;
 
                 grid[x, y] = cell;
             }
@@ -308,5 +321,16 @@ public class MazeGenerator : MonoBehaviour
         }
 
         return closest;
+    }
+
+    Color GetCellColor(int x, int y)
+    {
+        float xPercent = (float)x / (width - 1);
+        float yPercent = (float)y / (height - 1);
+
+        Color topBlend = Color.Lerp(topLeftColor, topRightColor, xPercent);
+        Color bottomBlend = Color.Lerp(bottomLeftColor, bottomRightColor, xPercent);
+
+        return Color.Lerp(bottomBlend, topBlend, yPercent);
     }
 }
