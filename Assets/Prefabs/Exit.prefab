@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 2416886681267967481}
   - component: {fileID: 4598975609142234040}
   - component: {fileID: -5941233150503223174}
+  - component: {fileID: 7561983805610223298}
   m_Layer: 0
   m_Name: Exit
   m_TagString: Untagged
@@ -121,3 +122,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f07d997d3572d2a4c97bd2222e6963e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &7561983805610223298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7826141598360597931}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2220c5be466fbd84789e63aabdb6fdd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  beamPrefab: {fileID: 5397642072071128637, guid: d8f9f7e79c4f3b6409835d7fa7b74208, type: 3}
+  interval: 20
+  beamDuration: 7
+  fadeDuration: 3
