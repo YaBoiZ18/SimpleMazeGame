@@ -406,7 +406,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   sprintMultiplier: 1.8
-  mouseSensitivity: 600
+  mouseSensitivity: 500
   maxStamina: 6
   staminaDrainRate: 1.5
   staminaRegenRate: 1
