@@ -21,7 +21,7 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Chasing")] // Added chasing variables
     public float sightRange = 10f;
-    public LayerMask obstacleMask;
+    public LayerMask obstacleMask; // Layer mask to detect obstacles between enemy and player
 
     [Header("Retreat")] // Added retreating variables
     public float safeDistanceFromExit = 6f;

@@ -133,8 +133,8 @@ MonoBehaviour:
   sightRange: 10
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 0
-  safeDistanceFromExit: 6
+    m_Bits: 128
+  safeDistanceFromExit: 2
 --- !u!54 &8349480864724191108
 Rigidbody:
   m_ObjectHideFlags: 0

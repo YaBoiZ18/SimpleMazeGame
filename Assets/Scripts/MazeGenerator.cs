@@ -56,7 +56,7 @@ public class MazeGenerator : MonoBehaviour
     
     private System.Random rng = new System.Random(); // Random number generator for neighbor selection
 
-    private Vector2Int exitCellPosition; // Stores the grid coordinates of the exit for key placement logic
+    public Vector2Int exitCellPosition; // Stores the grid coordinates of the exit for key placement logic
     private Vector2Int playerSpawnCell; // Stores the grid coordinates of the player's spawn cell for key placement logic
 
     NavMeshSurface surface; // Reference to the NavMeshSurface component for baking the navigation mesh after maze generation
@@ -412,15 +412,25 @@ public class MazeGenerator : MonoBehaviour
     {
         List<Transform> points = new List<Transform>();
 
-        for (int i = 0; i < count; i++)
+        Vector2Int exitCell = exitCellPosition; // Get the exit cell position to avoid placing patrol points too close to it
+
+        for (int i = 0; i < count; i++) // Attempt to find a random cell that isn't near the exit for each patrol point
         {
-            int x = rng.Next(width);
-            int y = rng.Next(height);
+            Vector2Int cell;
+
+            int safetyAttempts = 20;
+
+            do
+            {
+                cell = new Vector2Int(rng.Next(width), rng.Next(height));
+                safetyAttempts--;
+
+            } while (IsNearExit(cell, exitCell) && safetyAttempts > 0);
 
             Vector3 pos = new Vector3(
-                x * cellSize,
+                cell.x * cellSize,
                 1f,
-                y * cellSize
+                cell.y * cellSize
             );
 
             GameObject point = new GameObject("PatrolPoint");
@@ -430,5 +440,14 @@ public class MazeGenerator : MonoBehaviour
         }
 
         return points;
+    }
+
+    bool IsNearExit(Vector2Int cell, Vector2Int exitCell) // Check if the given cell is within a 1-tile radius of the exit cell (including diagonals)
+    {
+        int dx = Mathf.Abs(cell.x - exitCell.x);
+        int dy = Mathf.Abs(cell.y - exitCell.y);
+
+        // blocks same cell + 1-tile radius around exit
+        return dx <= 1 && dy <= 1;
     }
 }
