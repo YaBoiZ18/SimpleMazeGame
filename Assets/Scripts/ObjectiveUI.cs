@@ -11,8 +11,15 @@ public class ObjectiveUI : MonoBehaviour
 
     private void Awake()
     {
-        // Set the singleton instance to this object.
-        Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            // DontDestroyOnLoad(gameObject); // OPTIONAL
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     public void SetObjective(string text)

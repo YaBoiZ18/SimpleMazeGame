@@ -1,5 +1,7 @@
-using UnityEngine;
 using System.Collections.Generic;
+using Unity.AI.Navigation;
+using UnityEngine;
+using UnityEngine.AI;
 
 public class Cell
 {
@@ -26,6 +28,9 @@ public class MazeGenerator : MonoBehaviour
     [Header("Player")]
     public GameObject playerPrefab; // Drag your Player prefab here    
     public float playerSpawnHeight = 1f; // Prevent spawning inside floor
+
+    [Header("Enemy")]
+    public GameObject enemyPrefab; // Prefab for the enemy that spawns when the key is collected
 
     [Header("Exit")]    
     public GameObject exitPrefab; // Prefab for the exit/goal object    
@@ -54,11 +59,17 @@ public class MazeGenerator : MonoBehaviour
     private Vector2Int exitCellPosition; // Stores the grid coordinates of the exit for key placement logic
     private Vector2Int playerSpawnCell; // Stores the grid coordinates of the player's spawn cell for key placement logic
 
+    NavMeshSurface surface; // Reference to the NavMeshSurface component for baking the navigation mesh after maze generation
+
     void Start()
     {
         GenerateGrid();
         GenerateMaze(new Vector2Int(0, 0));
         SpawnPlayerAtEdge();
+
+        surface = FindObjectOfType<NavMeshSurface>();
+        surface.BuildNavMesh();
+
         ObjectiveUI.Instance.SetObjective("Find the key hidden in the maze");
         FindObjectOfType<MazeTimer>().StartTimer();
     }
@@ -270,12 +281,12 @@ public class MazeGenerator : MonoBehaviour
     {
         // Define all four corners
         List<Vector2Int> corners = new List<Vector2Int>()
-    {
-        new Vector2Int(0, 0),
-        new Vector2Int(0, height - 1),
-        new Vector2Int(width - 1, 0),
-        new Vector2Int(width - 1, height - 1)
-    };
+        {
+            new Vector2Int(0, 0),
+            new Vector2Int(0, height - 1),
+            new Vector2Int(width - 1, 0),
+            new Vector2Int(width - 1, height - 1)
+        };
 
         // Remove the corner closest to the player spawn
         corners.RemoveAll(c => c == GetClosestCorner(playerSpawnCell));
@@ -295,9 +306,69 @@ public class MazeGenerator : MonoBehaviour
         GameObject keyObj = Instantiate(keyPrefab, worldPosition, Quaternion.identity);
 
         MazeKey keyScript = keyObj.GetComponent<MazeKey>();
-        keyScript.Initialize(mazeExit);
+        keyScript.Initialize(mazeExit, this, enemyPrefab);
     }
 
+    // Spawn an enemy at a random corner that isn't near the player or exit, and set its target references
+    public void SpawnEnemy(GameObject enemyPrefab)
+    {
+        List<Vector2Int> corners = new List<Vector2Int>() // All four corners of the maze
+        {
+            new Vector2Int(0, 0),
+            new Vector2Int(0, height - 1),
+            new Vector2Int(width - 1, 0),
+            new Vector2Int(width - 1, height - 1)
+        };
+
+        Transform player = FindObjectOfType<PlayerController>().transform;
+
+        float minDistance = cellSize * 3f; // tweak this (2–4 cells away feels good)
+
+        List<Vector2Int> validCorners = new List<Vector2Int>();
+
+        foreach (var corner in corners) // Filter out corners that are too close to the player
+        {
+            Vector3 worldPos = new Vector3(
+                corner.x * cellSize,
+                1f,
+                corner.y * cellSize
+            );
+
+            if (Vector3.Distance(worldPos, player.position) > minDistance)
+            {
+                validCorners.Add(corner);
+            }
+        }
+
+        // Fallback if ALL corners are too close (rare but possible)
+        if (validCorners.Count == 0)
+        {
+            validCorners = corners;
+        }
+
+        Vector2Int spawnCell = validCorners[rng.Next(validCorners.Count)];
+
+        // Convert the chosen corner cell to world-space position for spawning the enemy
+        Vector3 spawnPos = new Vector3(
+            spawnCell.x * cellSize,
+            1f,
+            spawnCell.y * cellSize
+        );
+
+        GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+
+        EnemyAI ai = enemy.GetComponent<EnemyAI>();
+
+        if (ai != null)
+        {
+            ai.player = player;
+            ai.exit = mazeExit.transform;
+
+            ai.patrolPoints = GeneratePatrolPoints(5); // tweak number (4–8 works well)
+        }
+    }
+
+    // Helper method to find the corner closest to a given position
     Vector2Int GetClosestCorner(Vector2Int position)
     {
         List<Vector2Int> corners = new List<Vector2Int>()
@@ -324,6 +395,7 @@ public class MazeGenerator : MonoBehaviour
         return closest;
     }
 
+    // Compute a blended color for a cell based on its position to create a gradient effect across the maze
     Color GetCellColor(int x, int y)
     {
         float xPercent = (float)x / (width - 1);
@@ -333,5 +405,30 @@ public class MazeGenerator : MonoBehaviour
         Color bottomBlend = Color.Lerp(bottomLeftColor, bottomRightColor, xPercent);
 
         return Color.Lerp(bottomBlend, topBlend, yPercent);
+    }
+
+    // Generate a list of random patrol points within the maze for the enemy to roam between when not chasing the player
+    public List<Transform> GeneratePatrolPoints(int count)
+    {
+        List<Transform> points = new List<Transform>();
+
+        for (int i = 0; i < count; i++)
+        {
+            int x = rng.Next(width);
+            int y = rng.Next(height);
+
+            Vector3 pos = new Vector3(
+                x * cellSize,
+                1f,
+                y * cellSize
+            );
+
+            GameObject point = new GameObject("PatrolPoint");
+            point.transform.position = pos;
+
+            points.Add(point.transform);
+        }
+
+        return points;
     }
 }

@@ -9,11 +9,20 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
+        {
             Instance = this;
+            // DontDestroyOnLoad(gameObject); // OPTIONAL
+        }
         else
+        {
             Destroy(gameObject);
+        }
+    }
+
+    private void OnEnable() // Ensure time is running when the game starts or restarts
+    {
+        Time.timeScale = 1f;
     }
 
     public void WinGame()

@@ -406,7 +406,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   sprintMultiplier: 1.8
-  mouseSensitivity: 500
+  mouseSensitivity: 450
   maxStamina: 6
   staminaDrainRate: 1.5
   staminaRegenRate: 1
@@ -483,7 +483,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 439
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
