@@ -47,6 +47,15 @@ public class MazeGenerator : MonoBehaviour
     public Color bottomLeftColor = new Color(0.7f, 1f, 0.7f); // Light green
     public Color bottomRightColor = new Color(1f, 0.9f, 0.6f); // Light orange
 
+    [Header("Danger Atmosphere")]
+    public Light sunLight;
+
+    [Header("Skybox")]
+    public Material skyboxMaterial;
+
+    public float originalExposure;
+    public float originalAtmosphere;
+
     private MazeExit mazeExit; // Cached reference to the MazeExit component for unlocking logic
 
     private int playerSpawnSide; // Tracks which side the player was spawned on (0..3)
@@ -64,6 +73,9 @@ public class MazeGenerator : MonoBehaviour
 
     void Start()
     {
+
+        ResetSkybox(); // now safe
+
         GenerateGrid();
         GenerateMaze(new Vector2Int(0, 0));
         SpawnPlayerAtEdge();
@@ -73,6 +85,18 @@ public class MazeGenerator : MonoBehaviour
 
         ObjectiveUI.Instance.SetObjective("Find the key hidden in the maze");
         FindObjectOfType<MazeTimer>().StartTimer();
+    }
+
+    // Reset skybox settings to their original values (called on start and can be called again if needed to restore the normal atmosphere after danger mode)
+    void ResetSkybox()
+    {
+        if (skyboxMaterial == null) return;
+
+        skyboxMaterial.SetFloat("_Exposure", Mathf.Max(originalExposure, 1f));
+        skyboxMaterial.SetFloat("_AtmosphereThickness", Mathf.Max(originalAtmosphere, 1f));
+
+        RenderSettings.skybox = skyboxMaterial;
+        DynamicGI.UpdateEnvironment();
     }
 
     // Create grid and instantiate walls for each cell
@@ -495,28 +519,57 @@ public class MazeGenerator : MonoBehaviour
     // Coroutine to smoothly transition all maze walls to a dark blood red color over 2 seconds when the player collects the key, creating a sense of urgency and danger
     IEnumerator FadeMazeToDangerColor()
     {
-        Color targetColor = new Color(0.35f, 0f, 0f); // dark blood red
-        float duration = 2f;
-        float timer = 0f;
-
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
 
         Color[] startColors = new Color[renderers.Length];
 
         for (int i = 0; i < renderers.Length; i++)
-        {
             startColors[i] = renderers[i].material.color;
-        }
+
+        Color targetMazeColor = new Color(0.35f, 0f, 0f);
+
+        float startIntensity = sunLight != null ? sunLight.intensity : 1f;
+        float targetIntensity = 0.18f;
+
+        Color startLightColor = sunLight != null ? sunLight.color : Color.white;
+        Color targetLightColor = new Color(0.6f, 0.15f, 0.15f);
+
+        float duration = 3f;
+        float timer = 0f;
+
+        float startAtmosphere = skyboxMaterial.GetFloat("_AtmosphereThickness");
+        float targetExposure = 0.4f;
+        float targetAtmosphere = 2.5f;
 
         while (timer < duration)
         {
             timer += Time.deltaTime;
             float t = timer / duration;
 
+            // Maze walls
             for (int i = 0; i < renderers.Length; i++)
             {
                 renderers[i].material.color =
-                    Color.Lerp(startColors[i], targetColor, t);
+                    Color.Lerp(startColors[i], targetMazeColor, t);
+            }
+
+            // Sun light
+            if (sunLight != null)
+            {
+                sunLight.intensity =
+                    Mathf.Lerp(startIntensity, targetIntensity, t);
+
+                sunLight.color =
+                    Color.Lerp(startLightColor, targetLightColor, t);
+            }
+
+            if (skyboxMaterial != null)
+            {
+                skyboxMaterial.SetFloat("_Exposure",
+                    Mathf.Lerp(originalExposure, targetExposure, t));
+
+                skyboxMaterial.SetFloat("_AtmosphereThickness",
+                    Mathf.Lerp(startAtmosphere, targetAtmosphere, t));
             }
 
             yield return null;
