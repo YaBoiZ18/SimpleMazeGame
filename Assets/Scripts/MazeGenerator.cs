@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 public class Cell
 {
@@ -355,16 +356,24 @@ public class MazeGenerator : MonoBehaviour
             spawnCell.y * cellSize
         );
 
-        GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+        GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);       
 
         EnemyAI ai = enemy.GetComponent<EnemyAI>();
+
+        HeartbeatEffect hb = FindObjectOfType<HeartbeatEffect>();
+
+        if (hb != null)
+        {
+            hb.SetEnemy(enemy.transform);
+            hb.player = FindObjectOfType<PlayerController>().transform;
+        }
 
         if (ai != null)
         {
             ai.player = player;
             ai.exit = mazeExit.transform;
 
-            ai.patrolPoints = GeneratePatrolPoints(5); // tweak number (4–8 works well)
+            ai.patrolPoints = GenerateSmartPatrolPoints(6); // tweak number (4–8 works well)
         }
     }
 
@@ -407,30 +416,42 @@ public class MazeGenerator : MonoBehaviour
         return Color.Lerp(bottomBlend, topBlend, yPercent);
     }
 
-    // Generate a list of random patrol points within the maze for the enemy to roam between when not chasing the player
-    public List<Transform> GeneratePatrolPoints(int count)
+    // Generate patrol points for the enemy that are not near the exit and prefer intersections/corridors
+    public List<Transform> GenerateSmartPatrolPoints(int count)
     {
+        List<Vector2Int> validCells = new List<Vector2Int>();
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Vector2Int cell = new Vector2Int(x, y);
+
+                if (IsNearExit(cell, exitCellPosition))
+                    continue;
+
+                int openPaths = CountOpenDirections(cell);
+
+                // Prefer intersections / corridors
+                if (openPaths >= 2)
+                {
+                    validCells.Add(cell);
+                }
+            }
+        }
+
         List<Transform> points = new List<Transform>();
 
-        Vector2Int exitCell = exitCellPosition; // Get the exit cell position to avoid placing patrol points too close to it
-
-        for (int i = 0; i < count; i++) // Attempt to find a random cell that isn't near the exit for each patrol point
+        for (int i = 0; i < count && validCells.Count > 0; i++)
         {
-            Vector2Int cell;
-
-            int safetyAttempts = 20;
-
-            do
-            {
-                cell = new Vector2Int(rng.Next(width), rng.Next(height));
-                safetyAttempts--;
-
-            } while (IsNearExit(cell, exitCell) && safetyAttempts > 0);
+            int index = rng.Next(validCells.Count);
+            Vector2Int chosen = validCells[index];
+            validCells.RemoveAt(index);
 
             Vector3 pos = new Vector3(
-                cell.x * cellSize,
+                chosen.x * cellSize,
                 1f,
-                cell.y * cellSize
+                chosen.y * cellSize
             );
 
             GameObject point = new GameObject("PatrolPoint");
@@ -450,4 +471,57 @@ public class MazeGenerator : MonoBehaviour
         // blocks same cell + 1-tile radius around exit
         return dx <= 1 && dy <= 1;
     }
+
+    // Count how many directions (top, bottom, left, right) are open (no wall) for a given cell
+    int CountOpenDirections(Vector2Int cell)
+    {
+        int count = 0;
+
+        Cell c = grid[cell.x, cell.y];
+
+        if (c.topWall == null) count++;
+        if (c.bottomWall == null) count++;
+        if (c.leftWall == null) count++;
+        if (c.rightWall == null) count++;
+
+        return count;
+    }
+
+    public void TriggerDangerMode()
+    {
+        StartCoroutine(FadeMazeToDangerColor());
+    }
+
+    // Coroutine to smoothly transition all maze walls to a dark blood red color over 2 seconds when the player collects the key, creating a sense of urgency and danger
+    IEnumerator FadeMazeToDangerColor()
+    {
+        Color targetColor = new Color(0.35f, 0f, 0f); // dark blood red
+        float duration = 2f;
+        float timer = 0f;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+
+        Color[] startColors = new Color[renderers.Length];
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            startColors[i] = renderers[i].material.color;
+        }
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            float t = timer / duration;
+
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                renderers[i].material.color =
+                    Color.Lerp(startColors[i], targetColor, t);
+            }
+
+            yield return null;
+        }
+    }
+
+    
 }

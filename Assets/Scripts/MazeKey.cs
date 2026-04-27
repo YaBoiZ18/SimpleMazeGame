@@ -30,8 +30,11 @@ public class MazeKey : MonoBehaviour
 
             // Spawn enemy
             if (generator != null && enemyPrefab != null)
+            {
                 generator.SpawnEnemy(enemyPrefab);
-
+                generator.TriggerDangerMode();
+            }
+               
 
             // Remove the key object from the scene so it can't be reused.
             Destroy(gameObject);
