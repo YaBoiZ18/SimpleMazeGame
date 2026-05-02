@@ -26,6 +26,13 @@ public class EnemyAI : MonoBehaviour
     [Header("Retreat")] // Added retreating variables
     public float safeDistanceFromExit = 6f;
 
+    [Header("Speed Scaling")] // Added Speed scaling variables
+    [SerializeField] float speedIncreasePerEscape = 0.4f;
+    [SerializeField] float maxSpeed = 7f;
+
+    // State management variables
+    private bool hasCaughtPlayer = false;
+
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -118,5 +125,32 @@ public class EnemyAI : MonoBehaviour
         {
             agent.SetDestination(hit.position);
         }
+    }
+
+    // Handle player capture
+    private void OnTriggerEnter(Collider other)
+    {
+        if (hasCaughtPlayer) return;
+
+        PlayerController pc = other.GetComponent<PlayerController>();
+
+        if (pc != null)
+        {
+            hasCaughtPlayer = true;
+            GameManager.Instance.StartStruggle(pc, this);
+        }
+    }
+
+    // Method to reset catch state after struggle ends
+    public void ResetCatch()
+    {
+        hasCaughtPlayer = false;
+    }
+
+    // Method to increase speed after each escape
+    public void IncreaseSpeed()
+    {
+        agent.speed += speedIncreasePerEscape;
+        agent.speed = Mathf.Min(agent.speed, maxSpeed);
     }
 }

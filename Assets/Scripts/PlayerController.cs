@@ -31,6 +31,9 @@ public class PlayerController : MonoBehaviour
 
         // Lock and hide the cursor for a typical first-person experience.
         Cursor.lockState = CursorLockMode.Locked;
+
+        // Load mouse sensitivity from PlayerPrefs, defaulting to 400 if not set.
+        mouseSensitivity = PlayerPrefs.GetFloat("Sensitivity", 400f);
     }
 
     private void Update()
@@ -38,6 +41,8 @@ public class PlayerController : MonoBehaviour
         HandleMouseLook();     // Rotate camera and player based on mouse input.
         HandleSprint();       // Read sprint input and adjust stamina.
         RegenerateStamina();  // Regenerate stamina when not sprinting.
+
+        if (Time.timeScale == 0f) return; // If the game is paused, skip movement input to prevent unintended movement when resuming.
     }
 
     private void FixedUpdate()
@@ -142,5 +147,11 @@ public class PlayerController : MonoBehaviour
     public float StaminaNormalized
     {
         get { return currentStamina / maxStamina; } // Return stamina as a normalized value (0..1) for UI or other systems.
+    }
+
+    // Method to allow external scripts (like SettingsMenu) to update mouse sensitivity in real-time.
+    public void SetSensitivity(float value)
+    {
+        mouseSensitivity = value;
     }
 }
