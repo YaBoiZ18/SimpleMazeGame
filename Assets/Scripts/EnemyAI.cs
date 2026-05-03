@@ -19,10 +19,14 @@ public class EnemyAI : MonoBehaviour
     public float patrolWaitTime = 1.5f;
     private float waitTimer;
 
-    [Header("Player Investigation")]
-    public float investigationInterval = 2f;
-    private float investigationTimer;
-    private Vector3 lastKnownPlayerPos;
+    private Vector3 dynamicPlayerPatrolPoint;
+    private bool hasDynamicPlayerPoint;
+
+    [Header("Tracking")]
+    private float repathTimer;
+    private Vector3 trackedPlayerPosition; 
+    public float repathInterval = 2f;
+
 
     [Header("Chasing")]
     public float sightRange = 10f;
@@ -43,8 +47,8 @@ public class EnemyAI : MonoBehaviour
         currentState = State.Roaming;
         waitTimer = patrolWaitTime;
 
-        lastKnownPlayerPos = player.position;
-        investigationTimer = investigationInterval;
+        hasDynamicPlayerPoint = false;
+        repathTimer = repathInterval;
 
         agent.stoppingDistance = 0.8f;
     }
@@ -90,51 +94,54 @@ public class EnemyAI : MonoBehaviour
     {
         if (patrolPoints.Count == 0) return;
 
-        // Inject "investigation behavior" every few seconds
-        investigationTimer -= Time.deltaTime;
+        Transform target;
 
-        if (investigationTimer <= 0f)
+        bool isPlayerPoint = (currentPatrolIndex == 1 && patrolPoints.Count > 1);
+
+        // --- PLAYER TRACKING POINT ---
+        if (isPlayerPoint)
         {
-            lastKnownPlayerPos = player.position;
-            investigationTimer = investigationInterval;
+            // Refresh player position at intervals ONLY (not every frame)
+            repathTimer -= Time.deltaTime;
 
-            // Force agent to investigate player position
-            agent.SetDestination(lastKnownPlayerPos);
+            if (repathTimer <= 0f || !hasDynamicPlayerPoint)
+            {
+                dynamicPlayerPatrolPoint = player.position;
+                hasDynamicPlayerPoint = true;
 
-            currentState = State.Investigating;
+                repathTimer = repathInterval;
+            }
+
+            agent.SetDestination(dynamicPlayerPatrolPoint);
+
+            // Arrival check (IMPORTANT: use NavMesh distance ONLY)
+            if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
+            {
+                AdvancePatrol();
+                hasDynamicPlayerPoint = false;
+                waitTimer = patrolWaitTime;
+            }
+
             return;
         }
 
-        Transform target = patrolPoints[currentPatrolIndex];
+        // --- NORMAL PATROL POINTS ---
+        target = patrolPoints[currentPatrolIndex];
 
         agent.SetDestination(target.position);
 
-        if (!agent.pathPending &&
-            agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
         {
             waitTimer -= Time.deltaTime;
 
             if (waitTimer <= 0f)
+            {
                 AdvancePatrol();
+                waitTimer = patrolWaitTime;
+            }
         }
     }
 
-    // -------------------------
-    // INVESTIGATION STATE (Not in use yet)
-    // -------------------------
-    void HandleInvestigation()
-    {
-        agent.SetDestination(lastKnownPlayerPos);
-
-        bool reached =
-            !agent.pathPending &&
-            agent.remainingDistance <= agent.stoppingDistance + 0.4f;
-
-        if (reached)
-        {
-            currentState = State.Roaming;
-        }
-    }
 
     void AdvancePatrol()
     {
