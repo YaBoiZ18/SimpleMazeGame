@@ -4,33 +4,37 @@ using System.Collections.Generic;
 
 public class EnemyAI : MonoBehaviour
 {
-    public enum State { Roaming, Chasing, Retreating } // Added Retreating state
+    public enum State { Roaming, Chasing, Investigating, Retreating }
     private State currentState;
 
     [Header("References")]
     public Transform player;
     public Transform exit;
 
-    private NavMeshAgent agent; // Reference to the NavMeshAgent component
+    private NavMeshAgent agent;
 
-    [Header("Patrol")] // Added patrol variables
+    [Header("Patrol")]
     public List<Transform> patrolPoints = new List<Transform>();
     private int currentPatrolIndex = 0;
     public float patrolWaitTime = 1.5f;
     private float waitTimer;
 
-    [Header("Chasing")] // Added chasing variables
-    public float sightRange = 10f;
-    public LayerMask obstacleMask; // Layer mask to detect obstacles between enemy and player
+    [Header("Player Investigation")]
+    public float investigationInterval = 2f;
+    private float investigationTimer;
+    private Vector3 lastKnownPlayerPos;
 
-    [Header("Retreat")] // Added retreating variables
+    [Header("Chasing")]
+    public float sightRange = 10f;
+    public LayerMask obstacleMask;
+
+    [Header("Retreat")]
     public float safeDistanceFromExit = 6f;
 
-    [Header("Speed Scaling")] // Added Speed scaling variables
+    [Header("Speed Scaling")]
     [SerializeField] float speedIncreasePerEscape = 0.4f;
     [SerializeField] float maxSpeed = 7f;
 
-    // State management variables
     private bool hasCaughtPlayer = false;
 
     private void Start()
@@ -38,32 +42,30 @@ public class EnemyAI : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         currentState = State.Roaming;
         waitTimer = patrolWaitTime;
+
+        lastKnownPlayerPos = player.position;
+        investigationTimer = investigationInterval;
+
+        agent.stoppingDistance = 0.8f;
     }
 
     private void Update()
     {
-        // Check if player and exit references are assigned
         if (player == null || exit == null) return;
 
         float distanceToExit = Vector3.Distance(transform.position, exit.position);
 
         if (distanceToExit < safeDistanceFromExit)
-        {
             currentState = State.Retreating;
-        }
         else if (CanSeePlayer())
-        {
             currentState = State.Chasing;
-        }
         else
-        {
             currentState = State.Roaming;
-        }
 
         HandleState();
     }
 
-    void HandleState() // Refactored state handling into a separate method
+    void HandleState()
     {
         switch (currentState)
         {
@@ -81,42 +83,82 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    void HandlePatrol() // Refactored patrol logic into a separate method
+    // -------------------------
+    // PATROL SYSTEM
+    // -------------------------
+    void HandlePatrol()
     {
         if (patrolPoints.Count == 0) return;
+
+        // Inject "investigation behavior" every few seconds
+        investigationTimer -= Time.deltaTime;
+
+        if (investigationTimer <= 0f)
+        {
+            lastKnownPlayerPos = player.position;
+            investigationTimer = investigationInterval;
+
+            // Force agent to investigate player position
+            agent.SetDestination(lastKnownPlayerPos);
+
+            currentState = State.Investigating;
+            return;
+        }
 
         Transform target = patrolPoints[currentPatrolIndex];
 
         agent.SetDestination(target.position);
 
-        if (Vector3.Distance(transform.position, target.position) < 1f)
+        if (!agent.pathPending &&
+            agent.remainingDistance <= agent.stoppingDistance + 0.3f)
         {
             waitTimer -= Time.deltaTime;
 
             if (waitTimer <= 0f)
-            {
-                currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Count;
-                waitTimer = patrolWaitTime;
-            }
+                AdvancePatrol();
         }
     }
 
-    bool CanSeePlayer() // Refactored player detection logic into a separate method
+    // -------------------------
+    // INVESTIGATION STATE (Not in use yet)
+    // -------------------------
+    void HandleInvestigation()
     {
-        Vector3 direction = (player.position - transform.position).normalized;
-        float distance = Vector3.Distance(transform.position, player.position);
+        agent.SetDestination(lastKnownPlayerPos);
 
-        if (distance > sightRange) return false;
+        bool reached =
+            !agent.pathPending &&
+            agent.remainingDistance <= agent.stoppingDistance + 0.4f;
 
-        if (!Physics.Raycast(transform.position, direction, distance, obstacleMask))
+        if (reached)
         {
-            return true;
+            currentState = State.Roaming;
         }
-
-        return false;
     }
 
-    void RetreatFromExit() // Refactored retreating logic into a separate method
+    void AdvancePatrol()
+    {
+        currentPatrolIndex = (currentPatrolIndex + 1) % patrolPoints.Count;
+        waitTimer = patrolWaitTime;
+    }
+
+    // -------------------------
+    // DETECTION
+    // -------------------------
+    bool CanSeePlayer()
+    {
+        Vector3 dir = (player.position - transform.position).normalized;
+        float dist = Vector3.Distance(transform.position, player.position);
+
+        if (dist > sightRange) return false;
+
+        return !Physics.Raycast(transform.position, dir, dist, obstacleMask);
+    }
+
+    // -------------------------
+    // RETREAT
+    // -------------------------
+    void RetreatFromExit()
     {
         Vector3 dir = (transform.position - exit.position).normalized;
         Vector3 retreatPoint = transform.position + dir * 10f;
@@ -127,7 +169,9 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // Handle player capture
+    // -------------------------
+    // CATCH SYSTEM
+    // -------------------------
     private void OnTriggerEnter(Collider other)
     {
         if (hasCaughtPlayer) return;
@@ -141,16 +185,13 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // Method to reset catch state after struggle ends
     public void ResetCatch()
     {
         hasCaughtPlayer = false;
     }
 
-    // Method to increase speed after each escape
     public void IncreaseSpeed()
     {
-        agent.speed += speedIncreasePerEscape;
-        agent.speed = Mathf.Min(agent.speed, maxSpeed);
+        agent.speed = Mathf.Min(agent.speed + speedIncreasePerEscape, maxSpeed);
     }
 }

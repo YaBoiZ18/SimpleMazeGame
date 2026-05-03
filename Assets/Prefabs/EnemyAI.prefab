@@ -152,11 +152,14 @@ MonoBehaviour:
   patrolPoints:
   - {fileID: 5479774030982678127, guid: c7e7c010aa25bdc4cbd124a2071c9052, type: 3}
   patrolWaitTime: 1.5
-  sightRange: 10
+  investigationInterval: 2
+  sightRange: 15
   obstacleMask:
     serializedVersion: 2
     m_Bits: 128
   safeDistanceFromExit: 2
+  speedIncreasePerEscape: 0.4
+  maxSpeed: 7
 --- !u!54 &8349480864724191108
 Rigidbody:
   m_ObjectHideFlags: 0

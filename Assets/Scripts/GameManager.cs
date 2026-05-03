@@ -14,8 +14,8 @@ public class GameManager : MonoBehaviour
     // Struggle mechanic variables
     [SerializeField] private StruggleUI struggleUI;
     private bool struggling = false;
-    private int mashCount = 0;
-    private int requiredMash = 8;
+    public int mashCount = 0;
+    public int requiredMash = 8;
 
     private void Awake()
     {

@@ -3703,6 +3703,8 @@ MonoBehaviour:
   winScreen: {fileID: 1414018294}
   gameOverScreen: {fileID: 868206292}
   struggleUI: {fileID: 486391826}
+  mashCount: 0
+  requiredMash: 5
 --- !u!4 &1085670567
 Transform:
   m_ObjectHideFlags: 0

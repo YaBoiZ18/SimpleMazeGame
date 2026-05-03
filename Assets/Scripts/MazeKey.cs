@@ -34,7 +34,13 @@ public class MazeKey : MonoBehaviour
                 generator.SpawnEnemy(enemyPrefab);
                 generator.TriggerDangerMode();
             }
-               
+
+            BeaconPulse beacon = FindObjectOfType<BeaconPulse>();
+
+            if (beacon != null)
+            {
+                beacon.DisableBeacon();
+            }
 
             // Remove the key object from the scene so it can't be reused.
             Destroy(gameObject);

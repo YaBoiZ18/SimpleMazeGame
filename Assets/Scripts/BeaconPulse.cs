@@ -5,44 +5,69 @@ public class BeaconPulse : MonoBehaviour
 {
     [Header("Settings")]
     public GameObject beamPrefab;
-    public float interval = 20f; // time between each pulse
-    public float beamDuration = 3f; // total time the beam is active (including fade in/out)
-    public float fadeDuration = 1f; // time for fade in/out
+    public float pulseEverySeconds = 20f;
+    public float beamDuration = 3f;
+    public float fadeDuration = 1f;
 
-    private void Start()
+    private MazeTimer mazeTimer;
+    private GameObject currentBeam;
+
+    private int nextPulseTime = 20;
+    private bool disabledForever = false;
+    private bool spawningBeam = false;
+
+    void Start()
     {
-        StartCoroutine(PulseRoutine());
+        mazeTimer = FindObjectOfType<MazeTimer>();
     }
 
-    IEnumerator PulseRoutine()
+    void Update()
     {
-        while (true)
+        if (disabledForever || mazeTimer == null)
+            return;
+
+        float time = mazeTimer.GetElapsedTime();
+
+        if (time >= nextPulseTime && !spawningBeam)
         {
-            yield return new WaitForSeconds(interval);
             StartCoroutine(SpawnBeam());
+
+            nextPulseTime += (int)pulseEverySeconds;
         }
     }
 
     IEnumerator SpawnBeam()
     {
-        if (beamPrefab == null) yield break;
+        spawningBeam = true;
 
-        GameObject beam = Instantiate(beamPrefab, transform.position, Quaternion.identity);
+        if (beamPrefab == null)
+        {
+            spawningBeam = false;
+            yield break;
+        }
 
-        // Ensure the beam has a material that supports transparency (e.g., Standard shader, Transparent mode)
-        Renderer renderer = beam.GetComponent<Renderer>();
+        currentBeam = Instantiate(
+            beamPrefab,
+            transform.position,
+            Quaternion.identity
+        );
+
+        Renderer renderer = currentBeam.GetComponent<Renderer>();
+
         if (renderer == null)
         {
-            Destroy(beam, beamDuration);
+            Destroy(currentBeam);
+            spawningBeam = false;
             yield break;
         }
 
         Material mat = renderer.material;
         Color color = mat.color;
 
-        // Fade in
+        // Fade In
         float t = 0f;
-        while (t < fadeDuration)
+
+        while (t < fadeDuration && currentBeam != null)
         {
             t += Time.deltaTime;
             color.a = Mathf.Lerp(0f, 1f, t / fadeDuration);
@@ -50,12 +75,12 @@ public class BeaconPulse : MonoBehaviour
             yield return null;
         }
 
-        // Fully visible for the remaining time
-        yield return new WaitForSeconds(beamDuration - 2 * fadeDuration);
+        yield return new WaitForSeconds(beamDuration - fadeDuration * 2f);
 
-        // Fade out
+        // Fade Out
         t = 0f;
-        while (t < fadeDuration)
+
+        while (t < fadeDuration && currentBeam != null)
         {
             t += Time.deltaTime;
             color.a = Mathf.Lerp(1f, 0f, t / fadeDuration);
@@ -63,6 +88,21 @@ public class BeaconPulse : MonoBehaviour
             yield return null;
         }
 
-        Destroy(beam);
+        if (currentBeam != null)
+            Destroy(currentBeam);
+
+        spawningBeam = false;
+    }
+
+    public void DisableBeacon()
+    {
+        disabledForever = true;
+
+        StopAllCoroutines();
+
+        if (currentBeam != null)
+            Destroy(currentBeam);
+
+        gameObject.SetActive(false);
     }
 }
